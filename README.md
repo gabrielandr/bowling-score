@@ -2,6 +2,11 @@
     mvn clean install
     mvn spring-boot:run
 
+    You can also run the project with the following commands
+
+    mvn clean install
+    java -jar target/bowling-score-0.0.1-SNAPSHOT.jar
+
 # How to run unit test in the project
     mvn test
 
@@ -26,3 +31,7 @@
     
     I chose to make a new project with Spring Boot, cause it helps in a lot of ways to code in a better and efficient way, such as the unit tests.
     Coding in a pure java project is kinda tricky and it doesn`t reproduce a real world project.
+
+# Details about why I chose coding a new project
+
+    
