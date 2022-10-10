@@ -2,13 +2,16 @@ package com.jobsity.bowlingscore.service;
 
 import com.jobsity.bowlingscore.dto.ScoreBoardDTO;
 import com.jobsity.bowlingscore.exception.BowlingBusinessException;
+import com.jobsity.bowlingscore.util.PlayerUtils;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.FileCopyUtils;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.regex.Pattern;
 
 @Service
@@ -16,16 +19,16 @@ public class BowlingServiceImpl implements BowlingService {
 
     @Override
     public List<String> processScore(String fileName) throws BowlingBusinessException, IOException {
-        Map<String, List<String>> playersThrowsMap = readBowlingFile(fileName);
+        List<ScoreBoardDTO> playersThrows = readBowlingFile(fileName);
         List<String> finalScoreBoard = new ArrayList<>();
         finalScoreBoard.add("Frame \t\t 1 \t\t 2 \t\t 3 \t\t 4 \t\t 5 \t\t 6 \t\t 7 \t\t 8 \t\t 9 \t\t 10\n");
 
         List<ScoreBoardDTO> scoreBoard;
-        if (playersThrowsMap != null) {
+        if (!playersThrows.isEmpty()) {
             List<String> errors = new ArrayList<>();
-            for (Map.Entry<String, List<String>> rollsByPlayer : playersThrowsMap.entrySet()) {
+            for (ScoreBoardDTO rollsByPlayer : playersThrows) {
                 scoreBoard = new ArrayList<>();
-                errors.addAll(calculatePlayerScore(rollsByPlayer.getValue(), scoreBoard));
+                errors.addAll(calculatePlayerScore(rollsByPlayer.getPinfalls(), scoreBoard));
                 if (!errors.isEmpty()) {
                     throw new BowlingBusinessException("Error has acurred! " + errors);
                 } else {
@@ -37,7 +40,7 @@ public class BowlingServiceImpl implements BowlingService {
         return finalScoreBoard;
     }
 
-    public Map<String, List<String>> readBowlingFile(String fileName) throws IOException, BowlingBusinessException {
+    public List<ScoreBoardDTO> readBowlingFile(String fileName) throws IOException, BowlingBusinessException {
         ClassPathResource classPathResource = new ClassPathResource(fileName);
         byte[] data = FileCopyUtils.copyToByteArray(classPathResource.getInputStream());
         String content = new String(data, StandardCharsets.UTF_8);
@@ -72,12 +75,12 @@ public class BowlingServiceImpl implements BowlingService {
                     //Apply strike bonus
                     playerScore += playerRolls.get(playerNextThrowIndex) + playerRolls.get(playerNextThrowIndex + 1) + playerRolls.get(playerNextThrowIndex + 2);
                     if (frameIndex == 9) {
-                        scoreBoard.add(new ScoreBoardDTO(String.valueOf(playerScore), Arrays.asList(
+                        scoreBoard.add(new ScoreBoardDTO("", String.valueOf(playerScore), Arrays.asList(
                                 isStrike(playerRolls, playerNextThrowIndex) ? "X" : String.valueOf(playerRolls.get(playerNextThrowIndex)),
                                 isStrike(playerRolls, playerNextThrowIndex + 1) ? "X" : String.valueOf(playerRolls.get(playerNextThrowIndex + 1)),
                                 isStrike(playerRolls, playerNextThrowIndex + 2) ? "X" : String.valueOf(playerRolls.get(playerNextThrowIndex + 2)))));
                     } else {
-                        scoreBoard.add(new ScoreBoardDTO(String.valueOf(playerScore), Arrays.asList("", "X")));
+                        scoreBoard.add(new ScoreBoardDTO("", String.valueOf(playerScore), Arrays.asList("", "X")));
                     }
                     playerNextThrowIndex++;
                     frameLastIndex += 2;
@@ -87,16 +90,16 @@ public class BowlingServiceImpl implements BowlingService {
                     if (frameIndex == 9) {
                         frameLastIndex += 2;
 
-                        scoreBoard.add(new ScoreBoardDTO(String.valueOf(playerScore), Arrays.asList(String.valueOf(playerRolls.get(playerNextThrowIndex)), "/",
+                        scoreBoard.add(new ScoreBoardDTO("", String.valueOf(playerScore), Arrays.asList(String.valueOf(playerRolls.get(playerNextThrowIndex)), "/",
                                 String.valueOf(playerRolls.get(playerNextThrowIndex + 2)))));
                     } else {
-                        scoreBoard.add(new ScoreBoardDTO(String.valueOf(playerScore), Arrays.asList(String.valueOf(playerRolls.get(playerNextThrowIndex)), "/")));
+                        scoreBoard.add(new ScoreBoardDTO("", String.valueOf(playerScore), Arrays.asList(String.valueOf(playerRolls.get(playerNextThrowIndex)), "/")));
                     }
                     playerNextThrowIndex += 2;
                     frameLastIndex += 1;
                 } else {
                     playerScore += playerRolls.get(playerNextThrowIndex) + playerRolls.get(playerNextThrowIndex + 1);
-                    scoreBoard.add(new ScoreBoardDTO(String.valueOf(playerScore), Arrays.asList(String.valueOf(playerRolls.get(playerNextThrowIndex)),
+                    scoreBoard.add(new ScoreBoardDTO("", String.valueOf(playerScore), Arrays.asList(String.valueOf(playerRolls.get(playerNextThrowIndex)),
                             String.valueOf(playerRolls.get(playerNextThrowIndex + 1)))));
                     if (frameIndex == 9) {
                         playerNextThrowIndex += 1;
@@ -123,9 +126,9 @@ public class BowlingServiceImpl implements BowlingService {
      * @param scoreBoard
      * @return
      */
-    protected List<String> displayScoreBoard(Map.Entry<String, List<String>> rollsByPlayer, List<ScoreBoardDTO> scoreBoard) {
+    protected List<String> displayScoreBoard(ScoreBoardDTO rollsByPlayer, List<ScoreBoardDTO> scoreBoard) {
         List<String> finalScoreBoard = new ArrayList<>();
-        finalScoreBoard.add(rollsByPlayer.getKey() + "\n");
+        finalScoreBoard.add(rollsByPlayer.getPlayerName() + "\n");
 
         String pinFallScore = "";
         String frameScore = "";
@@ -194,20 +197,20 @@ public class BowlingServiceImpl implements BowlingService {
      * @param rawRollsFromFile
      * @return
      */
-    protected Map<String, List<String>> readPlayersRolls(String[] rawRollsFromFile) {
+    protected List<ScoreBoardDTO> readPlayersRolls(String[] rawRollsFromFile) {
         String currentPlayer = "";
-        Map<String, List<String>> playersThrows = new HashMap<>();
+        List<ScoreBoardDTO> playersThrows = new ArrayList<>();
 
         int lineNumber = 1;
         for (String line : rawRollsFromFile) {
             //Odd line = player names, even lines = player scores, if playername changes, a new player is added to the map if it doesn`t exist
             if (lineNumber % 2 != 0) {
                 currentPlayer = line;
-                if (playersThrows.get(line) == null) {
-                    playersThrows.put(line, new ArrayList<>());
+                if (PlayerUtils.findPlayerRollsByName(playersThrows, currentPlayer) == null) {
+                    playersThrows.add(new ScoreBoardDTO(line, "", new ArrayList<>()));
                 }
             } else {
-                playersThrows.get(currentPlayer).add(line);
+                PlayerUtils.findPlayerRollsByName(playersThrows, currentPlayer).getPinfalls().add(line);
             }
             lineNumber++;
         }

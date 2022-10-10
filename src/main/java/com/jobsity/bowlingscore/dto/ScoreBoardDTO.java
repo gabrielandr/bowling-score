@@ -10,6 +10,7 @@ import java.util.List;
 @NoArgsConstructor
 public class ScoreBoardDTO {
 
+    private String playerName;
     private String score;
     private List<String> pinfalls;
 
