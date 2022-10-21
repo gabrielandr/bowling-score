@@ -4,15 +4,14 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.awt.*;
 import java.util.List;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class ScoreBoardDTO {
+public class RollsDTO {
 
     private String playerName;
-    private List<Frame> frames;
+    private List<String> pinfalls;
 
 }

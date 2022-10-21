@@ -1,14 +1,13 @@
 package com.jobsity.bowlingscore.service;
 
+import com.jobsity.bowlingscore.dto.RollsDTO;
 import com.jobsity.bowlingscore.dto.ScoreBoardDTO;
 import com.jobsity.bowlingscore.exception.BowlingBusinessException;
 import com.jobsity.bowlingscore.util.PlayerUtils;
-import org.springframework.core.io.ClassPathResource;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.util.FileCopyUtils;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -17,39 +16,56 @@ import java.util.regex.Pattern;
 @Service
 public class BowlingServiceImpl implements BowlingService {
 
+    @Autowired
+    private FileService fileService;
+
+    @Autowired
+    private PlayerRollService playerRollService;
+
+    public BowlingServiceImpl(FileService fileService, PlayerRollService playerRollService) {
+        this.fileService = fileService;
+        this.playerRollService = playerRollService;
+    }
+
     @Override
     public List<String> processScore(String fileName) throws BowlingBusinessException, IOException {
-        List<ScoreBoardDTO> playersThrows = readBowlingFile(fileName);
-        List<String> finalScoreBoard = new ArrayList<>();
-        finalScoreBoard.add("Frame \t\t 1 \t\t 2 \t\t 3 \t\t 4 \t\t 5 \t\t 6 \t\t 7 \t\t 8 \t\t 9 \t\t 10\n");
-
-        List<ScoreBoardDTO> scoreBoard;
-        if (!playersThrows.isEmpty()) {
-            List<String> errors = new ArrayList<>();
-            for (ScoreBoardDTO rollsByPlayer : playersThrows) {
-                scoreBoard = new ArrayList<>();
-                errors.addAll(calculatePlayerScore(rollsByPlayer.getPinfalls(), scoreBoard));
-                if (!errors.isEmpty()) {
-                    throw new BowlingBusinessException("Error has acurred! " + errors);
-                } else {
-                    finalScoreBoard.addAll(displayScoreBoard(rollsByPlayer, scoreBoard));
-                }
-
-            }
+        List<String> rawRollsFromFile = fileService.readBowlingFile(fileName);
+        List<RollsDTO> rollsByPlayer = playerRollService.separateRollsByPlayer(rawRollsFromFile);
+        List<String> errors = new ArrayList<>();
+        for (RollsDTO rollsDTO : rollsByPlayer) {
+            errors = validatePlayerPinfalls(rollsDTO.getPinfalls());
+            convertPlayerPinFalls(rollsDTO.getPinfalls());
         }
-        return finalScoreBoard;
+
+        if (!errors.isEmpty()) {
+            throw new BowlingBusinessException()
+        }
+
+        playerRollService.buildPlayersScoreBoard(rollsByPlayer);
+
+//        List<ScoreBoardDTO> playersThrows = readBowlingFile(fileName);
+//        List<String> finalScoreBoard = new ArrayList<>();
+//        finalScoreBoard.add("Frame \t\t 1 \t\t 2 \t\t 3 \t\t 4 \t\t 5 \t\t 6 \t\t 7 \t\t 8 \t\t 9 \t\t 10\n");
+//
+//        List<ScoreBoardDTO> scoreBoard;
+//        if (!playersThrows.isEmpty()) {
+//            List<String> errors = new ArrayList<>();
+//            for (ScoreBoardDTO rollsByPlayer : playersThrows) {
+//                scoreBoard = new ArrayList<>();
+//                errors.addAll(calculatePlayerScore(rollsByPlayer.getPinfalls(), scoreBoard));
+//                if (!errors.isEmpty()) {
+//                    throw new BowlingBusinessException("Error has acurred! " + errors);
+//                } else {
+//                    finalScoreBoard.addAll(displayScoreBoard(rollsByPlayer, scoreBoard));
+//                }
+//
+//            }
+//        }
+//        return finalScoreBoard;
     }
 
     public List<ScoreBoardDTO> readBowlingFile(String fileName) throws IOException, BowlingBusinessException {
-        ClassPathResource classPathResource = new ClassPathResource(fileName);
-        byte[] data = FileCopyUtils.copyToByteArray(classPathResource.getInputStream());
-        String content = new String(data, StandardCharsets.UTF_8);
-        if ("".equals(content)) {
-            throw new BowlingBusinessException("File is empty!");
-        }
-        //Split string with tab separator
-        String[] rawRollsFromFile = content.split("\\s+");
-        return readPlayersRolls(rawRollsFromFile);
+
     }
 
     /**

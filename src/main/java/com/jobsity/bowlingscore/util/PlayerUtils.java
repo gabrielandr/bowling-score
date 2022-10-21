@@ -1,16 +1,16 @@
 package com.jobsity.bowlingscore.util;
 
-import com.jobsity.bowlingscore.dto.ScoreBoardDTO;
+import com.jobsity.bowlingscore.dto.RollsDTO;
 
 import java.util.List;
 import java.util.Optional;
 
 public class PlayerUtils {
 
-    public static ScoreBoardDTO findPlayerRollsByName(List<ScoreBoardDTO> playersThrows, String playerName) {
-        Optional<ScoreBoardDTO> playerRollsOptional = playersThrows.stream().filter(scoreBoardDTO -> playerName.equalsIgnoreCase(scoreBoardDTO.getPlayerName())).findFirst();
-        if (playerRollsOptional.isPresent()) {
-            return playerRollsOptional.get();
+    public static RollsDTO findPlayerRollsByName(List<RollsDTO> playersThrows, String playerName) {
+        Optional<RollsDTO> rollsDTOOptional = playersThrows.stream().filter(rollsDTO -> playerName.equalsIgnoreCase(rollsDTO.getPlayerName())).findFirst();
+        if (rollsDTOOptional.isPresent()) {
+            return rollsDTOOptional.get();
         }
         return null;
     }
